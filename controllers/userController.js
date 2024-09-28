@@ -19,7 +19,7 @@ export const resendAccountConfirmationEmail = asyncHandler(async (req, res) => {
 
   successResponse(res, {
     statusCode: 200,
-    message: `If your account exists, a new confirmation email has been sent to ${email}. Please check your inbox.`
+    message: `If your account exists, a new confirmation email has been sent to (${email}). Please check your inbox.`
   });
 });
 
@@ -54,9 +54,9 @@ export const getUserProfile = asyncHandler(async (req, res) => {
 
   successResponse(res, {
     statusCode: 200,
-    message: "User profile found successfully.",
+    message: "User profile retrieved successfully.",
     data: {
-      user: user.generateSafeObject()
+      user
     }
   });
 });
@@ -67,7 +67,7 @@ export const getUserProfile = asyncHandler(async (req, res) => {
 export const getAllUsers = asyncHandler(async (req, res) => {
   const { page, limit, sortBy, order, fields, search } = req.query;
 
-  const { users, totalPages } = await userService.getAllUsers({
+  const { users, totalPages, totalUsers } = await userService.getAllUsers({
     page,
     limit,
     sortBy,
@@ -82,6 +82,7 @@ export const getAllUsers = asyncHandler(async (req, res) => {
     data: {
       users,
       pagination: {
+        totalUsers,
         totalPages,
         currentPage: page,
         prevPage: page - 1 > 0 ? page - 1 : null,
@@ -102,7 +103,7 @@ export const getCurrentUser = asyncHandler(async (req, res) => {
 
   successResponse(res, {
     statusCode: 200,
-    message: "User found successfully.",
+    message: "User retrieved successfully.",
     data: { user }
   });
 });
@@ -139,7 +140,7 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 
   successResponse(res, {
     statusCode: 200,
-    message: `An email has been sent to "${email}" with further instructions.`
+    message: `If your account exists, an email has been sent to (${email}) with further instructions.`
   });
 });
 
@@ -158,7 +159,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
 
   successResponse(res, {
     statusCode: 200,
-    message: "Password reset successfully.",
+    message: "Password has been reset successfully.",
     data: { user }
   });
 });
@@ -205,7 +206,7 @@ export const changeCurrentEmail = asyncHandler(async (req, res) => {
 
   successResponse(res, {
     statusCode: 200,
-    message: `A confirmation email has been sent to "${newEmail}". Please check your inbox and follow the instructions to confirm your email address.`,
+    message: `A confirmation email has been sent to (${newEmail}). Please check your inbox and follow the instructions to confirm your email address.`,
     data: { user }
   });
 });

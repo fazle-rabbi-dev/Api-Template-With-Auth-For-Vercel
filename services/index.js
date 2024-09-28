@@ -54,7 +54,6 @@ export const findItemWithId = async (Model, id, options = {}, select = "") => {
 };
 
 
-
 /*
 ***
 *** Auth Services ***
@@ -286,7 +285,6 @@ const refreshAccessToken = async (userId, refreshToken) => {
 };
 
 
-
 /*
 ***
 *** User Services ***
@@ -297,7 +295,7 @@ const resendAccountConfirmationEmail = async email => {
     if (!currentUser) {
         throw new ApiError(
           200, 
-          `If your account exists, a new confirmation email has been sent to ${email}. Please check your inbox.`
+          `If your account exists, a new confirmation email has been sent to (${email}). Please check your inbox.`
       );
     }
 
@@ -345,46 +343,6 @@ const confirmAccount = async (userId, confirmationToken) => {
     return currentUser.generateSafeObject();
 };
 
-const getAllUsers = async ({ page, limit, sortBy, order, fields, search }) => {
-    // pagination
-    page = parseInt(page) || 1;
-    limit = parseInt(limit) || 10;
-    const skip = (page - 1) * limit;
-
-    // Sorting
-    const sortField = sortBy || "createdAt";
-    const sortOrder = order === "desc" ? -1 : 1;
-    const sort = { [sortField]: sortOrder };
-
-    // partial response
-    fields = fields ? fields.split(",") : [];
-
-    // Search
-    const searchValue = (search || "").trim();
-    const filter = {
-        "authentication.role": { $ne: "admin" },
-        $or: [
-            { name: { $regex: searchValue, $options: "i" } },
-            { email: { $regex: searchValue, $options: "i" } },
-            { username: { $regex: searchValue, $options: "i" } }
-        ]
-    };
-
-    const users = await Users.find(filter).select(fields).sort(sort).limit(limit).skip(skip);
-    if (!users || users.length === 0) {
-        throw new ApiError(404, "Users not found.");
-    }
-
-    const count = await Users.find().countDocuments();
-    const totalPages = Math.ceil(count / limit);
-
-    return {
-        users,
-        totalPages,
-        page
-    };
-};
-
 const getCurrentUser = async (id, loggedInUserId) => {
     if (id !== loggedInUserId) {
         throw new ApiError(403, "Sorry, you don't have permission to perform this operation. Please provide a valid user id.");
@@ -402,7 +360,7 @@ const getCurrentUser = async (id, loggedInUserId) => {
         );
     }
 
-    return currentUser;
+    return currentUser.generateSafeObject();
 };
 
 const changeCurrentPassword = async (loggedInUserId, oldPassword, newPassword) => {
@@ -428,7 +386,10 @@ const forgotPassword = async email => {
     const currentUser = await Users.findOne({ email }).select("+authentication.resetPasswordToken");
 
     if (!currentUser) {
-        throw new ApiError(404, "No user found with that email address.");
+        throw new ApiError(
+          200, 
+          `If your account exists, an email has been sent to (${email}) with further instructions.`
+        );
     }
 
     const resetPasswordToken = await generateRandomString();
@@ -439,7 +400,7 @@ const forgotPassword = async email => {
     await currentUser.save();
 
     // Send account confirmation email
-    const htmlEmailTemplate = generatePasswordResetEmail(currentUser.fullName, resetPasswordLink);
+    const htmlEmailTemplate = generatePasswordResetEmail(currentUser.name, resetPasswordLink);
     await sendEmail(currentUser.email, `${PROJECT_NAME} Password Reset`, htmlEmailTemplate);
 };
 
@@ -461,15 +422,16 @@ const resetPassword = async (userId, resetPasswordToken, newPassword) => {
     return currentUser.generateSafeObject();
 };
 
+// CHECK This:
 const updateAccountDetails = async data => {
     const { body, id, loggedInUserId } = data;
-    const { fullName, username } = body;
+    const { name, username } = body;
 
     if (id !== loggedInUserId) {
         throw new ApiError(403, "Sorry, you don't have permission to do this operation. Please provide a valid user id.");
     }
 
-    const allowedUpdates = ["fullName", "username"];
+    const allowedUpdates = ["name", "username"];
 
     // Validate allowed updates
     const updates = Object.keys(body);
@@ -479,8 +441,8 @@ const updateAccountDetails = async data => {
         throw new ApiError(400, "Invalid update. Please provide required fields to update account.");
     }
 
-    if (fullName?.length < 3) {
-        throw new ApiError(400, "Fullname must be at least 3 characters long.");
+    if (name?.length < 3) {
+        throw new ApiError(400, "name must be at least 3 characters long.");
     }
 
     if (username && !validateUsername(username.trim())) {
@@ -523,7 +485,7 @@ const changeCurrentEmail = async (loggedInUserId, newEmail, password) => {
     const confirmationLink = generateEmailChangeConfirmationLink(currentUser._id, confirmationToken);
 
     // send email
-    const htmlEmailTemplate = generateEmailChangeConfirmationEmail(currentUser.fullName, confirmationLink);
+    const htmlEmailTemplate = generateEmailChangeConfirmationEmail(currentUser.name, confirmationLink);
 
     await sendEmail(newEmail, `${PROJECT_NAME} Account confirmation`, htmlEmailTemplate);
 
@@ -562,6 +524,52 @@ const confirmChangeEmail = async (userId, confirmationToken) => {
     return updatedUser.generateSafeObject();
 };
 
+
+// =====================================================================================================================
+// Admin Routes
+// =====================================================================================================================
+const getAllUsers = async ({ page, limit, sortBy, order, fields, search }) => {
+    // pagination
+    page = parseInt(page) || 1;
+    limit = parseInt(limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // Sorting
+    const sortField = sortBy || "createdAt";
+    const sortOrder = order === "desc" ? -1 : 1;
+    const sort = { [sortField]: sortOrder };
+
+    // partial response
+    fields = fields ? fields.split(",") : [];
+
+    // Search
+    const searchValue = (search || "").trim();
+    const filter = {
+        "authentication.role": { $ne: "admin" },
+        $or: [
+            { name: { $regex: searchValue, $options: "i" } },
+            { email: { $regex: searchValue, $options: "i" } },
+            { username: { $regex: searchValue, $options: "i" } }
+        ]
+    };
+
+    const users = await Users.find(filter).select(fields).sort(sort).limit(limit).skip(skip);
+    if (!users || users.length === 0) {
+        throw new ApiError(404, "Users not found.");
+    }
+
+    const count = await Users.find().countDocuments();
+    const totalPages = Math.ceil(count / limit);
+
+    return {
+        users,
+        totalPages,
+        page,
+        totalUsers: users.length
+    };
+};
+
+// CHECK
 const deleteUser = async userId => {
     const existingUser = await findItemWithId(User, userId);
 
@@ -611,6 +619,7 @@ const manageUserStatus = async (id, action) => {
 };
 
 
+// Export
 export const authService = {
     registerUser,
     loginUser,

@@ -12,4 +12,4 @@ echo "$commit_message"
 # Execute the git commit command with the constructed message
 git commit -m "$commit_message"
 
-git push
+git push -u origin2
