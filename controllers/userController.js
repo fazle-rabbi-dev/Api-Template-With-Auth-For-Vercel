@@ -6,7 +6,6 @@ import { validationResult } from "express-validator";
 import User from "../models/UserModel.js";
 import { userService, findItemWithId } from "../services/index.js";
 import {
-  ApiResponse,
   ApiError,
   successResponse,
 } from "../lib/index.js";

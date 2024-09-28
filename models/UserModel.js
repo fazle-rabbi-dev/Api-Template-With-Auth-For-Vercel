@@ -176,12 +176,10 @@ userSchema.methods.isPasswordCorrect = async function (password) {
 userSchema.methods.generateSafeObject = function () {
     return {
         _id: this._id,
-        fullName: this.fullName,
+        name: this.name,
         username: this.username,
         email: this.email,
-        avatar: this.avatar,
         createdAt: this.createdAt,
-        updatedAt: this.updatedAt
     };
 };
 

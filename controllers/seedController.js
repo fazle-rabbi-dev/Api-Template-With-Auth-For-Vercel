@@ -1,6 +1,6 @@
 import asyncHandler from "express-async-handler";
-import User from "../models/UserModel.js";
-import { ApiResponse, ApiError, ENVIRONMENT, USERS_DATA } from "../lib/index.js";
+import Users from "../models/UserModel.js";
+import { successResponse, ApiError, ENVIRONMENT, USERS_DATA } from "../lib/index.js";
 
 const checkPermission = () => {
     if (ENVIRONMENT !== "dev") {
@@ -8,16 +8,18 @@ const checkPermission = () => {
     }
 };
 
-// =====================================================================================================================
 // Seed Users
-// =====================================================================================================================
 export const seedUsers = asyncHandler(async (req, res) => {
     checkPermission();
 
-    await User.deleteMany({});
+    await Users.deleteMany({});
 
     // Insert seed data
-    const insertedUsers = await User.create(USERS_DATA);
-
-    res.status(201).json(new ApiResponse(201, insertedUsers, "Users inserted successfully."));
+    const insertedUsers = await Users.create(USERS_DATA);
+    
+    successResponse(res, {
+      statusCode: 201,
+      message: "Users inserted successfully.",
+      data: { insertedUsers },
+    });
 });

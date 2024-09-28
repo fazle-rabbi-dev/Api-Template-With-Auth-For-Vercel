@@ -3,9 +3,8 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { validationResult } from "express-validator";
 
-import User from "../models/UserModel.js";
+import Users from "../models/UserModel.js";
 import { 
-  ApiResponse,
   successResponse,
   ApiError,
   sendEmail,
@@ -52,11 +51,9 @@ export const findItemWithId = async (Model, id, options = {}, select = "") => {
 *** Auth Services ***
 ***
 */
-// =====================================================================================================================
 // Register User
-// =====================================================================================================================
 const registerUser = async ({ name, username, email, password }) => {
-    const existingUser = await User.findOne({
+    const existingUser = await Users.findOne({
         $or: [{ username }, { email }]
     });
 
@@ -75,7 +72,7 @@ const registerUser = async ({ name, username, email, password }) => {
         }
     };
 
-    const createdUser = await User.create(userData);
+    const createdUser = await Users.create(userData);
 
     // Generate account confirmation token & link
     const confirmationToken = await generateRandomString();
@@ -86,7 +83,7 @@ const registerUser = async ({ name, username, email, password }) => {
     await createdUser.save();
 
     // Send account confirmation email
-    const htmlEmailTemplate = generateAccountConfirmationEmail(createdUser.fullName, confirmationLink);
+    const htmlEmailTemplate = generateAccountConfirmationEmail(createdUser.name, confirmationLink);
     await sendEmail(createdUser.email, `${PROJECT_NAME} Account confirmation`, htmlEmailTemplate);
 
     const userObject = {
@@ -97,11 +94,9 @@ const registerUser = async ({ name, username, email, password }) => {
     return userObject;
 };
 
-// =====================================================================================================================
 // Login User
-// =====================================================================================================================
 const loginUser = async (username, email, password) => {
-    const user = await User.findOne({
+    const user = await Users.findOne({
         $or: [{ username }, { email }]
     }).select("+authentication.password +authentication.isAccountConfirmed +authentication.role +isBanned");
 
@@ -132,6 +127,7 @@ const loginUser = async (username, email, password) => {
     const { accessToken, refreshToken } = await generateAccessAndRefereshTokens(user._id, user.authentication.role);
 
     const userObject = user.toObject();
+    delete userObject.isBanned;
     userObject.authentication = {
         accessToken,
         refreshToken
@@ -140,13 +136,139 @@ const loginUser = async (username, email, password) => {
     return userObject;
 };
 
-// =====================================================================================================================
+// Social Auth
+const loginWithSocial = async req => {
+    const { accessToken } = req.body;
+
+    // Validation
+    if (!accessToken || accessToken?.trim().length < 1000) {
+        throw new ApiError(
+            400,
+            "Invalid access token. Please provide a valid access token."
+        );
+    }
+
+    // Verify accessToken & find user
+    let userRecord;
+    try {
+        userRecord = await getAuth().verifyIdToken(accessToken);
+    } catch (error) {
+        console.log(error);
+
+        throw new ApiError(400, "Invalid token");
+    }
+
+    if (!userRecord) {
+        throw new ApiError(404, "User not found. Invalid token");
+    }
+
+    const {
+        name,
+        email,
+        firebase: { sign_in_provider }
+    } = userRecord;
+    const authType = sign_in_provider.split(".")[0];
+
+    console.log({ userRecord, authType });
+
+    // Check if user exists in database
+    let existingUser = await Users.findOne({ email }).select(
+        "+authentication.password +authentication.authType"
+    );
+
+    // Check if user has already an account created using provided email with a password
+    if (
+        existingUser &&
+        !["github", "google"].includes(existingUser?.authType)
+    ) {
+        console.log(authType);
+        console.log(existinguser.authType);
+
+        throw new ApiError(
+            409,
+            "Your email is associated with an account. Please login with your email & password"
+        );
+    }
+
+    // Check if user has already an account created using either google or github
+    if (existingUser && ["github", "google"].includes(existingUser?.authType)) {
+        if (existingUser?.authType !== authType) {
+            throw new ApiError(
+                409,
+                `You have already an account. Try to login with ${authType}`
+            );
+        }
+    }
+
+    /*Create new account or Login to existing account*/
+    let newUserAccount;
+    let loginAccessToken = null;
+
+    // Create account if user has no account
+    if (!existingUser) {
+        const newUser = {
+            name,
+            username: name.toLowerCase().replaceAll(" ", "") + Date.now(),
+            email,
+            authentication: {
+                password: "",
+                isAccountConfirmed: true,
+                authType
+            }
+        };
+
+        const createdUser = await Users.create(newUser);
+        console.log({ createdUser });
+
+        // Login to new account
+        const user = await Users.findOne({ email })?.select(
+            "+authentication.password"
+        );
+
+        console.log({ loggedInUser: user });
+
+        if (user) {
+            delete user.authentication.password;
+            newUserAccount = user;
+            loginAccessToken = jwt.sign(
+                { userId: user._id, email: user.email },
+                JWT_SECRET,
+                { expiresIn: "7d" }
+            );
+        }
+    }
+
+    // Login if user has already an account
+    if (existingUser) {
+        loginAccessToken = jwt.sign(
+            { userId: existinguser._id, email: existinguser.email },
+            JWT_SECRET,
+            {
+                expiresIn: "7d"
+            }
+        );
+        delete existinguser.authentication.password;
+    }
+
+    let userData = {};
+    if (existingUser) {
+        userData = existingUser;
+    } else {
+        userData = newUserAccount;
+    }
+
+    return {
+        statusCode: 200,
+        message: `Login successful using ${authType}`,
+        data: { user: { ...userData, accessToken: loginAccessToken } }
+    };
+};
+
 // Refresh Access Token
-// =====================================================================================================================
 const refreshAccessToken = async (userId, refreshToken) => {
     console.log({ userId, refreshToken });
 
-    const currentUser = await User.findById(userId);
+    const currentUser = await Users.findById(userId);
 
     if (!currentUser) {
         throw new ApiError(404, "User does not exists.");
@@ -174,7 +296,7 @@ const refreshAccessToken = async (userId, refreshToken) => {
 ***
 */
 const resendAccountConfirmationEmail = async email => {
-    const currentUser = await User.findOne({ email }).select("+authentication.isAccountConfirmed +authentication.confirmationToken");
+    const currentUser = await Users.findOne({ email }).select("+authentication.isAccountConfirmed +authentication.confirmationToken");
     if (!currentUser) {
         throw new ApiError(404, "No user exists with the provided user ID.");
     }
@@ -206,7 +328,7 @@ const resendAccountConfirmationEmail = async email => {
 const confirmAccount = async (userId, confirmationToken) => {
     const select = "+authentication.confirmationToken +authentication.isAccountConfirmed";
 
-    const currentUser = await findItemWithId(User, userId, {}, select);
+    const currentUser = await findItemWithId(Users, userId, {}, select);
 
     if (currentUser.authentication.isAccountConfirmed) {
         throw new ApiError(400, "Hey there! Your account is already confirmed. Feel free to log in.");
@@ -248,12 +370,12 @@ const getAllUsers = async ({ page, limit, sortBy, order, fields, search }) => {
         ]
     };
 
-    const users = await User.find(filter).select(fields).sort(sort).limit(limit).skip(skip);
+    const users = await Users.find(filter).select(fields).sort(sort).limit(limit).skip(skip);
     if (!users || users.length === 0) {
         throw new ApiError(404, "Users not found.");
     }
 
-    const count = await User.find().countDocuments();
+    const count = await Users.find().countDocuments();
     const totalPages = Math.ceil(count / limit);
 
     return {
@@ -268,7 +390,7 @@ const getCurrentUser = async (id, loggedInUserId) => {
         throw new ApiError(403, "Sorry, you don't have permission to perform this operation. Please provide a valid user id.");
     }
 
-    const currentUser = await User.findById(loggedInUserId).select("+authentication.refreshToken +isBanned");
+    const currentUser = await Users.findById(loggedInUserId).select("+authentication.refreshToken +isBanned");
     if (!currentUser) {
         throw new ApiError(404, "User does not exists.");
     }
@@ -284,7 +406,7 @@ const getCurrentUser = async (id, loggedInUserId) => {
 };
 
 const changeCurrentPassword = async (loggedInUserId, oldPassword, newPassword) => {
-    const currentUser = await User.findById(loggedInUserId).select("+authentication.password");
+    const currentUser = await Users.findById(loggedInUserId).select("+authentication.password");
 
     if (!currentUser) {
         throw new ApiError(404, "User does not exist.");
@@ -303,7 +425,7 @@ const changeCurrentPassword = async (loggedInUserId, oldPassword, newPassword) =
 };
 
 const forgotPassword = async email => {
-    const currentUser = await User.findOne({ email }).select("+authentication.resetPasswordToken");
+    const currentUser = await Users.findOne({ email }).select("+authentication.resetPasswordToken");
 
     if (!currentUser) {
         throw new ApiError(404, "No user found with that email address.");
@@ -322,7 +444,7 @@ const forgotPassword = async email => {
 };
 
 const resetPassword = async (userId, resetPasswordToken, newPassword) => {
-    const currentUser = await User.findById(userId).select("+authentication.resetPasswordToken +authentication.password");
+    const currentUser = await Users.findById(userId).select("+authentication.resetPasswordToken +authentication.password");
 
     if (!currentUser) {
         throw new ApiError(404, "User not found. Please ensure your userId is valid.");
@@ -368,28 +490,28 @@ const updateAccountDetails = async data => {
         );
     }
 
-    const existingUser = await User.findOne({ username });
+    const existingUser = await Users.findOne({ username });
 
     if (existingUser) {
         throw new ApiError(409, "This username is already in use. Please provide a different username to update your username.");
     }
 
-    const currentUser = await User.findById(loggedInUserId);
+    const currentUser = await Users.findById(loggedInUserId);
     const updateFields = req.body;
     
-    const updatedUser = await User.findByIdAndUpdate(loggedInUserId, updateFields, { new: true, runValidation: true });
+    const updatedUser = await Users.findByIdAndUpdate(loggedInUserId, updateFields, { new: true, runValidation: true });
 
     return updatedUser.generateSafeObject();
 };
 
 const changeCurrentEmail = async (loggedInUserId, newEmail, password) => {
-    const existingUser = await User.findOne({ email: newEmail });
+    const existingUser = await Users.findOne({ email: newEmail });
 
     if (existingUser) {
         throw new ApiError(409, "This email address is already in use. Please provide a different email address.");
     }
 
-    const currentUser = await User.findById(loggedInUserId).select("+authentication.password");
+    const currentUser = await Users.findById(loggedInUserId).select("+authentication.password");
     const isPasswordCorrect = await currentUser.isPasswordCorrect(password);
 
     if (!isPasswordCorrect) {
@@ -415,7 +537,7 @@ const changeCurrentEmail = async (loggedInUserId, newEmail, password) => {
 };
 
 const confirmChangeEmail = async (userId, confirmationToken) => {
-    const existingUser = await User.findById(userId).select("+authentication.tempMail +authentication.changeEmailConfirmationToken");
+    const existingUser = await Users.findById(userId).select("+authentication.tempMail +authentication.changeEmailConfirmationToken");
 
     if (!existingUser) {
         throw new ApiError(404, "User not found. Please ensure that you have clicked on the correct link.");
@@ -443,7 +565,7 @@ const confirmChangeEmail = async (userId, confirmationToken) => {
 const deleteUser = async userId => {
     const existingUser = await findItemWithId(User, userId);
 
-    const deletedUser = await User.deleteOne({
+    const deletedUser = await Users.deleteOne({
         _id: id,
         "authentication.role": "user"
     });
@@ -463,7 +585,7 @@ const manageUserStatus = async (id, action) => {
         throw new ApiError(400, "Invalid user Id.");
     }
 
-    const existingUser = await User.findById(id).select("+isBanned");
+    const existingUser = await Users.findById(id).select("+isBanned");
 
     if (!existingUser) {
         throw new ApiError(404, "User does not exists.");
@@ -478,7 +600,7 @@ const manageUserStatus = async (id, action) => {
     }
 
     const updateFields = { isBanned: action === "ban" };
-    const updatedUser = await User.findByIdAndUpdate(id, updateFields, { new: true }).select("+isBanned");
+    const updatedUser = await Users.findByIdAndUpdate(id, updateFields, { new: true }).select("+isBanned");
 
     const actionMessage = action === "ban" ? "banned" : "unbanned";
 
@@ -492,6 +614,7 @@ const manageUserStatus = async (id, action) => {
 export const authService = {
     registerUser,
     loginUser,
+    loginWithSocial,
     refreshAccessToken
 };
 

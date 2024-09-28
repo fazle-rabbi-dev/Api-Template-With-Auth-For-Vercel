@@ -2,7 +2,7 @@ import { Router } from "express";
 
 import { verifyToken, runValidation } from "../lib/index.js";
 import * as VALIDATOR from "../validators/index.js";
-import { registerUser, loginUser, refreshAccessToken } from "../controllers/authController.js";
+import { registerUser, loginUser, loginWithSocial, refreshAccessToken } from "../controllers/authController.js";
 import {
     confirmAccount,
     resendAccountConfirmationEmail,
@@ -29,6 +29,7 @@ const seedRouter = Router();
 // Auth routes
 authRouter.post("/register", VALIDATOR.register, runValidation, registerUser);
 authRouter.post("/login", VALIDATOR.login, runValidation, loginUser);
+authRouter.post("/social-login", VALIDATOR.loginWithSocial, runValidation, loginWithSocial);
 authRouter.patch("/refresh-access-token", VALIDATOR.refreshAccessToken, runValidation, refreshAccessToken);
 
 // User routes

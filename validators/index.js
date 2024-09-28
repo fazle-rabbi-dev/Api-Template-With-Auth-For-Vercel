@@ -15,8 +15,8 @@ export const register = [
     .trim()
     .notEmpty()
     .withMessage("User name is required.")
-    .isLength({ min: 3 })
-    .withMessage("Username must be at least 3 characters long.")
+    .isLength({ min: 3, max: 15 })
+    .withMessage("Username should be 3-15 characters long.")
     .custom((value, { req }) => {
       if (!validateUsername(value)) {
         throw new Error(
@@ -68,6 +68,13 @@ export const login = [
     .isLength({ min: 6 })
     .withMessage("Password is required and must be at least 6 characters long.")
 ];
+
+export const loginWithSocial = [
+    body("accessToken")
+      .trim()
+      .notEmpty()
+      .withMessage("Invalid access token.")
+  ]
 
 export const refreshAccessToken = [
   body("userId")
