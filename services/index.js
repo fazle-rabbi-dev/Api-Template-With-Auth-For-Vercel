@@ -2,6 +2,14 @@ import asyncHandler from "express-async-handler";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { validationResult } from "express-validator";
+import admin from "firebase-admin";
+import { initializeApp, applicationDefault } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { serviceAccount } from "../lib/index.js";
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+});
 
 import Users from "../models/UserModel.js";
 import { 
@@ -9,6 +17,7 @@ import {
   ApiError,
   sendEmail,
   PROJECT_NAME,
+  JWT_SECRET,
   generateAccountConfirmationEmail,
   generateEmailChangeConfirmationEmail,
   generatePasswordResetEmail,
@@ -98,12 +107,21 @@ const registerUser = async ({ name, username, email, password }) => {
 const loginUser = async (username, email, password) => {
     const user = await Users.findOne({
         $or: [{ username }, { email }]
-    }).select("+authentication.password +authentication.isAccountConfirmed +authentication.role +isBanned");
+    }).select("+authentication.password +authentication.isAccountConfirmed +authentication.role +authentication.authType +isBanned");
 
     if (!user) {
         throw new ApiError(404, "Oops! We couldn't find a user with the provided email or username.");
     }
-
+    
+    // Check if user has already an account created using either google or github
+    const { authType } = user.authentication;
+    if(authType !== "email+password") {
+      throw new ApiError(
+        409,
+        `You have already an account created using ${authType}. Try to login with ${authType}`
+      );
+    }
+    
     const isPasswordCorrect = await user.isPasswordCorrect(password);
 
     if (!isPasswordCorrect) {
@@ -137,24 +155,12 @@ const loginUser = async (username, email, password) => {
 };
 
 // Social Auth
-const loginWithSocial = async req => {
-    const { accessToken } = req.body;
-
-    // Validation
-    if (!accessToken || accessToken?.trim().length < 1000) {
-        throw new ApiError(
-            400,
-            "Invalid access token. Please provide a valid access token."
-        );
-    }
-
+const loginWithSocial = async accessToken => {
     // Verify accessToken & find user
     let userRecord;
     try {
         userRecord = await getAuth().verifyIdToken(accessToken);
     } catch (error) {
-        console.log(error);
-
         throw new ApiError(400, "Invalid token");
     }
 
@@ -175,31 +181,20 @@ const loginWithSocial = async req => {
     let existingUser = await Users.findOne({ email }).select(
         "+authentication.password +authentication.authType"
     );
-
+    
+    console.log({ existingUser })
+    
     // Check if user has already an account created using provided email with a password
     if (
         existingUser &&
-        !["github", "google"].includes(existingUser?.authType)
+        !["github", "google"].includes(existingUser?.authentication.authType)
     ) {
-        console.log(authType);
-        console.log(existinguser.authType);
-
         throw new ApiError(
             409,
             "Your email is associated with an account. Please login with your email & password"
         );
     }
-
-    // Check if user has already an account created using either google or github
-    if (existingUser && ["github", "google"].includes(existingUser?.authType)) {
-        if (existingUser?.authType !== authType) {
-            throw new ApiError(
-                409,
-                `You have already an account. Try to login with ${authType}`
-            );
-        }
-    }
-
+    
     /*Create new account or Login to existing account*/
     let newUserAccount;
     let loginAccessToken = null;
@@ -211,12 +206,14 @@ const loginWithSocial = async req => {
             username: name.toLowerCase().replaceAll(" ", "") + Date.now(),
             email,
             authentication: {
-                password: "",
+                password: Date.now(),
                 isAccountConfirmed: true,
                 authType
             }
         };
-
+        
+        console.log({ existingUser })
+        
         const createdUser = await Users.create(newUser);
         console.log({ createdUser });
 
@@ -241,25 +238,25 @@ const loginWithSocial = async req => {
     // Login if user has already an account
     if (existingUser) {
         loginAccessToken = jwt.sign(
-            { userId: existinguser._id, email: existinguser.email },
+            { userId: existingUser._id, email: existingUser.email },
             JWT_SECRET,
             {
                 expiresIn: "7d"
             }
         );
-        delete existinguser.authentication.password;
+        delete existingUser.authentication.password;
     }
 
     let userData = {};
     if (existingUser) {
-        userData = existingUser;
+        userData = existingUser.generateSafeObject();
     } else {
         userData = newUserAccount;
     }
-
+    
     return {
         statusCode: 200,
-        message: `Login successful using ${authType}`,
+        message: `Logged in successfully using ${authType}.`,
         data: { user: { ...userData, accessToken: loginAccessToken } }
     };
 };
@@ -298,7 +295,10 @@ const refreshAccessToken = async (userId, refreshToken) => {
 const resendAccountConfirmationEmail = async email => {
     const currentUser = await Users.findOne({ email }).select("+authentication.isAccountConfirmed +authentication.confirmationToken");
     if (!currentUser) {
-        throw new ApiError(404, "No user exists with the provided user ID.");
+        throw new ApiError(
+          200, 
+          `If your account exists, a new confirmation email has been sent to ${email}. Please check your inbox.`
+      );
     }
 
     if (currentUser.authentication.isAccountConfirmed) {
@@ -314,7 +314,7 @@ const resendAccountConfirmationEmail = async email => {
     await currentUser.save();
 
     // Send account confirmation email
-    const htmlEmailTemplate = generateAccountConfirmationEmail(currentUser.fullName, confirmationLink);
+    const htmlEmailTemplate = generateAccountConfirmationEmail(currentUser.name, confirmationLink);
     await sendEmail(currentUser.email, `${PROJECT_NAME} Account confirmation`, htmlEmailTemplate);
 
     const userObject = currentUser.toObject();

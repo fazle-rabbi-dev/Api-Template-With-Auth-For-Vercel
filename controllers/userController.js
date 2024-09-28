@@ -11,9 +11,7 @@ import {
 } from "../lib/index.js";
 
 
-// =====================================================================================================================
 // Resend Account Confirmation Email
-// =====================================================================================================================
 export const resendAccountConfirmationEmail = asyncHandler(async (req, res) => {
   const { email } = req.query;
 
@@ -21,7 +19,7 @@ export const resendAccountConfirmationEmail = asyncHandler(async (req, res) => {
 
   successResponse(res, {
     statusCode: 200,
-    message: `A new confirmation email has been sent to (${email}). Please check your inbox.`
+    message: `If your account exists, a new confirmation email has been sent to ${email}. Please check your inbox.`
   });
 });
 

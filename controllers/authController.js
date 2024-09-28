@@ -36,13 +36,17 @@ export const loginUser = asyncHandler(async (req, res) => {
 
 // Social Login
 export const loginWithSocial = asyncHandler(async (req, res) => {
-    const { token } = req.body;
-    const user = await authService.loginWithSocial(token);
+    const { accessToken } = req.body;
+    const {
+      statusCode,
+      message,
+      data
+    } = await authService.loginWithSocial(accessToken);
 
     successResponse(res, {
-        statusCode: 200,
-        message: "User logged in successfully using social!.",
-        data: { user }
+        statusCode,
+        message,
+        data
     });
 });
 

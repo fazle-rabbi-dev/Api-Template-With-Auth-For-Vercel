@@ -1,6 +1,6 @@
 git add .
 
-git commit -m "backup"
+#git commit -m "backup"
 # Get the current date in the desired format
 current_datetime=$(date "+%Y-%m-%d %I:%M:%S %p")
 

@@ -15,6 +15,12 @@ const authenticationSchema = new Schema(
             trim: true,
             select: false
         },
+        authType: {
+          type: String,
+          enum: ["email+password", "google", "github"],
+          default: "email+password",
+          select: false
+        },
         role: {
             type: String,
             enum: ["user", "admin", "moderator"],
