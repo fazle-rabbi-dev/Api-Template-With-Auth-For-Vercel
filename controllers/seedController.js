@@ -16,10 +16,10 @@ export const seedUsers = asyncHandler(async (req, res) => {
 
     // Insert seed data
     const insertedUsers = await Users.create(USERS_DATA);
-    
+
     successResponse(res, {
-      statusCode: 201,
-      message: "Users inserted successfully.",
-      data: { insertedUsers },
+        statusCode: 201,
+        message: "Users inserted successfully.",
+        data: { insertedUsers }
     });
 });

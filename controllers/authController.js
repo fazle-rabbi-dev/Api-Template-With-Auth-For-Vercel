@@ -3,7 +3,6 @@ import asyncHandler from "express-async-handler";
 import { successResponse } from "../lib/index.js";
 import { authService } from "../services/index.js";
 
-
 // Register User
 export const registerUser = asyncHandler(async (req, res) => {
     const { name, username, email, password } = req.body;
@@ -12,7 +11,7 @@ export const registerUser = asyncHandler(async (req, res) => {
         name,
         username,
         email,
-        password,
+        password
     });
 
     successResponse(res, {
@@ -25,7 +24,7 @@ export const registerUser = asyncHandler(async (req, res) => {
 // Login User
 export const loginUser = asyncHandler(async (req, res) => {
     const { username, email, password } = req.body;
-    const headers = req.headers['user-agent'];
+    const headers = req.headers["user-agent"];
     const user = await authService.loginUser(username, email, password, headers);
 
     successResponse(res, {
@@ -38,11 +37,7 @@ export const loginUser = asyncHandler(async (req, res) => {
 // Social Login
 export const loginWithSocial = asyncHandler(async (req, res) => {
     const { accessToken } = req.body;
-    const {
-      statusCode,
-      message,
-      data
-    } = await authService.loginWithSocial(accessToken);
+    const { statusCode, message, data } = await authService.loginWithSocial(accessToken);
 
     successResponse(res, {
         statusCode,

@@ -12,29 +12,28 @@ admin.initializeApp({
 });
 
 import Users from "../models/UserModel.js";
-import { 
-  successResponse,
-  ApiError,
-  sendEmail,
-  DEVELOPER_EMAIL,
-  PROJECT_NAME,
-  JWT_SECRET,
-  generateAccountConfirmationEmail,
-  generateEmailChangeConfirmationEmail,
-  generatePasswordResetEmail,
-  generateNewLoginNotificationEmail,
-  generatePasswordChangeNotificationEmail,
-  generateEmailChangeRequestNotificationEmail,
-  generateEmailChangedNotificationEmail,
-  generateRandomString,
-  generateAccountConfirmationLink,
-  generateEmailChangeConfirmationLink,
-  generateResetPasswordLink,
-  validateDocumentId,
-  generateValidationError,
-  validateUsername,
-  isValidUrl,
-  generateAccessAndRefereshTokens,
+import {
+    successResponse,
+    ApiError,
+    sendEmail,
+    DEVELOPER_EMAIL,
+    PROJECT_NAME,
+    JWT_SECRET,
+    generateAccountConfirmationEmail,
+    generateEmailChangeConfirmationEmail,
+    generatePasswordResetEmail,
+    generateNewLoginNotificationEmail,
+    generatePasswordChangeNotificationEmail,
+    generateEmailChangedNotificationEmail,
+    generateRandomString,
+    generateAccountConfirmationLink,
+    generateEmailChangeConfirmationLink,
+    generateResetPasswordLink,
+    validateDocumentId,
+    generateValidationError,
+    validateUsername,
+    isValidUrl,
+    generateAccessAndRefereshTokens
 } from "../lib/index.js";
 
 export const findItemWithId = async (Model, id, options = {}, select = "") => {
@@ -59,12 +58,11 @@ export const findItemWithId = async (Model, id, options = {}, select = "") => {
     return item;
 };
 
-
 /*
-***
-*** Auth Services ***
-***
-*/
+ ***
+ *** Auth Services ***
+ ***
+ */
 
 // Register User
 const registerUser = async ({ name, username, email, password }) => {
@@ -113,21 +111,20 @@ const registerUser = async ({ name, username, email, password }) => {
 const loginUser = async (username, email, password, headers) => {
     const user = await Users.findOne({
         $or: [{ username }, { email }]
-    }).select("+authentication.password +authentication.isAccountConfirmed +authentication.role +authentication.authType +isBanned");
+    }).select(
+        "+authentication.password +authentication.isAccountConfirmed +authentication.role +authentication.authType +isBanned"
+    );
 
     if (!user) {
         throw new ApiError(404, "Oops! We couldn't find a user with the provided email or username.");
     }
-    
+
     // Check if user has already an account created using either google or github
     const { authType } = user.authentication;
-    if(authType !== "email+password") {
-      throw new ApiError(
-        409,
-        `You have already an account created using ${authType}. Try to login with ${authType}`
-      );
+    if (authType !== "email+password") {
+        throw new ApiError(409, `You have already an account created using ${authType}. Try to login with ${authType}`);
     }
-    
+
     const isPasswordCorrect = await user.isPasswordCorrect(password);
 
     if (!isPasswordCorrect) {
@@ -147,25 +144,17 @@ const loginUser = async (username, email, password, headers) => {
             "Account Not Confirmed. Your account needs to be confirmed. Please check your email inbox for the confirmation link."
         );
     }
-    
+
     /* === Notify user about new login === */
     // Get the login time
     const loginTime = new Date().toLocaleString(); // or you can use `toISOString()` for UTC format
 
     // Get the device info from the User-Agent header
     const device = headers;
-    
-    const newLogin = generateNewLoginNotificationEmail(
-      user.username,
-      loginTime,
-      device
-    );
-    await sendEmail(
-        user.email,
-        "New login detected",
-        newLogin
-      );
-    
+
+    const newLogin = generateNewLoginNotificationEmail(user.username, loginTime, device);
+    await sendEmail(user.email, "New login detected", newLogin);
+
     const { accessToken, refreshToken } = await generateAccessAndRefereshTokens(user._id, user.authentication.role);
 
     const userObject = user.toObject();
@@ -202,23 +191,15 @@ const loginWithSocial = async accessToken => {
     console.log({ userRecord, authType });
 
     // Check if user exists in database
-    let existingUser = await Users.findOne({ email }).select(
-        "+authentication.password +authentication.authType"
-    );
-    
-    console.log({ existingUser })
-    
+    let existingUser = await Users.findOne({ email }).select("+authentication.password +authentication.authType");
+
+    console.log({ existingUser });
+
     // Check if user has already an account created using provided email with a password
-    if (
-        existingUser &&
-        !["github", "google"].includes(existingUser?.authentication.authType)
-    ) {
-        throw new ApiError(
-            409,
-            "Your email is associated with an account. Please login with your email & password"
-        );
+    if (existingUser && !["github", "google"].includes(existingUser?.authentication.authType)) {
+        throw new ApiError(409, "Your email is associated with an account. Please login with your email & password");
     }
-    
+
     /*Create new account or Login to existing account*/
     let newUserAccount;
     let loginAccessToken = null;
@@ -235,39 +216,29 @@ const loginWithSocial = async accessToken => {
                 authType
             }
         };
-        
-        console.log({ existingUser })
-        
+
+        console.log({ existingUser });
+
         const createdUser = await Users.create(newUser);
         console.log({ createdUser });
 
         // Login to new account
-        const user = await Users.findOne({ email })?.select(
-            "+authentication.password"
-        );
+        const user = await Users.findOne({ email })?.select("+authentication.password");
 
         console.log({ loggedInUser: user });
 
         if (user) {
             delete user.authentication.password;
             newUserAccount = user;
-            loginAccessToken = jwt.sign(
-                { userId: user._id, email: user.email },
-                JWT_SECRET,
-                { expiresIn: "7d" }
-            );
+            loginAccessToken = jwt.sign({ userId: user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
         }
     }
 
     // Login if user has already an account
     if (existingUser) {
-        loginAccessToken = jwt.sign(
-            { userId: existingUser._id, email: existingUser.email },
-            JWT_SECRET,
-            {
-                expiresIn: "7d"
-            }
-        );
+        loginAccessToken = jwt.sign({ userId: existingUser._id, email: existingUser.email }, JWT_SECRET, {
+            expiresIn: "7d"
+        });
         delete existingUser.authentication.password;
     }
 
@@ -277,7 +248,7 @@ const loginWithSocial = async accessToken => {
     } else {
         userData = newUserAccount;
     }
-    
+
     return {
         statusCode: 200,
         message: `Logged in successfully using ${authType}.`,
@@ -296,7 +267,10 @@ const refreshAccessToken = async (userId, refreshToken) => {
     }
 
     if (currentUser.authentication.refreshToken !== refreshToken) {
-        throw new ApiError(401, "The refresh token provided is invalid or has expired. Please login again to obtain a new refresh token.");
+        throw new ApiError(
+            401,
+            "The refresh token provided is invalid or has expired. Please login again to obtain a new refresh token."
+        );
     }
 
     const { accessToken: newAccessToken, refreshToken: newRefreshToken } = await generateAccessAndRefereshTokens(userId);
@@ -309,19 +283,20 @@ const refreshAccessToken = async (userId, refreshToken) => {
     };
 };
 
-
 /*
-***
-*** User Services ***
-***
-*/
+ ***
+ *** User Services ***
+ ***
+ */
 const resendAccountConfirmationEmail = async email => {
-    const currentUser = await Users.findOne({ email }).select("+authentication.isAccountConfirmed +authentication.confirmationToken");
+    const currentUser = await Users.findOne({ email }).select(
+        "+authentication.isAccountConfirmed +authentication.confirmationToken"
+    );
     if (!currentUser) {
         throw new ApiError(
-          200, 
-          `If your account exists, a new confirmation email has been sent to (${email}). Please check your inbox.`
-      );
+            200,
+            `If your account exists, a new confirmation email has been sent to (${email}). Please check your inbox.`
+        );
     }
 
     if (currentUser.authentication.isAccountConfirmed) {
@@ -400,15 +375,11 @@ const changeCurrentPassword = async (loggedInUserId, oldPassword, newPassword) =
     if (!isPasswordCorrect) {
         throw new ApiError(400, "Incorrect old password. Please try again with the correct password.");
     }
-    
-    // Notify user about password change 
-    const passwordChanged = generatePasswordChangeNotificationEmail(currentUser.username)
-    await sendEmail(
-        currentUser.email,
-        "Password changed",
-        passwordChanged
-      )
-    
+
+    // Notify user about password change
+    const passwordChanged = generatePasswordChangeNotificationEmail(currentUser.username);
+    await sendEmail(currentUser.email, "Password changed", passwordChanged);
+
     currentUser.authentication.password = newPassword;
     const savedUser = await currentUser.save();
 
@@ -419,10 +390,7 @@ const forgotPassword = async email => {
     const currentUser = await Users.findOne({ email }).select("+authentication.resetPasswordToken");
 
     if (!currentUser) {
-        throw new ApiError(
-          200, 
-          `If your account exists, an email has been sent to (${email}) with further instructions.`
-        );
+        throw new ApiError(200, `If your account exists, an email has been sent to (${email}) with further instructions.`);
     }
 
     const resetPasswordToken = await generateRandomString();
@@ -492,15 +460,15 @@ const updateAccountDetails = async data => {
 
     const currentUser = await Users.findById(loggedInUserId);
     const updateFields = body;
-    
-    if(isValidUrl(avatarUrl)) {
-      delete updateFields.avatarUrl;
-      updateFields.avatar = {
-        url: avatarUrl,
-        id: Date.now()
-      };
+
+    if (isValidUrl(avatarUrl)) {
+        delete updateFields.avatarUrl;
+        updateFields.avatar = {
+            url: avatarUrl,
+            id: Date.now()
+        };
     }
-    
+
     const updatedUser = await Users.findByIdAndUpdate(loggedInUserId, updateFields, { new: true, runValidation: true });
 
     return updatedUser.generateSafeObject();
@@ -527,7 +495,7 @@ const changeCurrentEmail = async (loggedInUserId, newEmail, password) => {
     // send email
     const htmlEmailTemplate = generateEmailChangeConfirmationEmail(currentUser.name, confirmationLink);
 
-    await sendEmail(newEmail, `${PROJECT_NAME} Account confirmation`, htmlEmailTemplate);
+    await sendEmail(newEmail, `${PROJECT_NAME} Email change request`, htmlEmailTemplate);
 
     // store token & new email in db
     currentUser.authentication.changeEmailConfirmationToken = confirmationToken;
@@ -539,7 +507,9 @@ const changeCurrentEmail = async (loggedInUserId, newEmail, password) => {
 };
 
 const confirmChangeEmail = async (userId, confirmationToken) => {
-    const existingUser = await Users.findById(userId).select("+authentication.tempMail +authentication.changeEmailConfirmationToken");
+    const existingUser = await Users.findById(userId).select(
+        "+authentication.tempMail +authentication.changeEmailConfirmationToken"
+    );
 
     if (!existingUser) {
         throw new ApiError(404, "User not found. Please ensure that you have clicked on the correct link.");
@@ -549,10 +519,14 @@ const confirmChangeEmail = async (userId, confirmationToken) => {
         existingUser.authentication.changeEmailConfirmationToken !== confirmationToken ||
         !existingUser.authentication.tempMail.trim()
     ) {
-        throw new ApiError(401, "Sorry, you don’t have permission to update this email address. Please click on the correct link.");
+        throw new ApiError(
+            401,
+            "Sorry, you don’t have permission to update this email address. Please click on the correct link."
+        );
     }
 
     // update email
+    const oldEmail = existingUser.email;
     existingUser.email = existingUser.authentication.tempMail;
 
     // remove tempMail & confirmationToken from db
@@ -561,9 +535,12 @@ const confirmChangeEmail = async (userId, confirmationToken) => {
 
     const updatedUser = await existingUser.save({ new: true });
 
+    // Notify user through old email about email change
+    const emailChanged = generateEmailChangedNotificationEmail(existingUser.name);
+    await sendEmail(oldEmail, "Email changed", emailChanged);
+
     return updatedUser.generateSafeObject();
 };
-
 
 // =====================================================================================================================
 // Admin Routes
@@ -651,7 +628,6 @@ const manageUserStatus = async (userId, action) => {
         actionMessage
     };
 };
-
 
 // Export
 export const authService = {

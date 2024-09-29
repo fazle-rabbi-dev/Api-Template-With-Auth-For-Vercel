@@ -16,10 +16,10 @@ const authenticationSchema = new Schema(
             select: false
         },
         authType: {
-          type: String,
-          enum: ["email+password", "google", "github"],
-          default: "email+password",
-          select: false
+            type: String,
+            enum: ["email+password", "google", "github"],
+            default: "email+password",
+            select: false
         },
         role: {
             type: String,
@@ -185,7 +185,7 @@ userSchema.methods.generateSafeObject = function () {
         name: this.name,
         username: this.username,
         email: this.email,
-        createdAt: this.createdAt,
+        createdAt: this.createdAt
     };
 };
 

@@ -20,7 +20,6 @@ import {
 } from "../controllers/userController.js";
 import { seedUsers } from "../controllers/seedController.js";
 
-
 // Initialize routers
 const authRouter = Router();
 const userRouter = Router();
@@ -34,7 +33,12 @@ authRouter.patch("/refresh-access-token", VALIDATOR.refreshAccessToken, runValid
 
 // User routes
 userRouter.get("/confirm-account", VALIDATOR.confirmAccount, runValidation, confirmAccount);
-userRouter.get("/resend-confirmation-email", VALIDATOR.resendAccountConfirmationEmail, runValidation, resendAccountConfirmationEmail);
+userRouter.get(
+    "/resend-confirmation-email",
+    VALIDATOR.resendAccountConfirmationEmail,
+    runValidation,
+    resendAccountConfirmationEmail
+);
 userRouter.get("/profile/:userId", VALIDATOR.getUserProfile, runValidation, getUserProfile);
 userRouter.get("/forgot-password", VALIDATOR.forgotPassword, runValidation, forgotPassword);
 userRouter.patch("/reset-password", VALIDATOR.resetPassword, runValidation, resetPassword);
@@ -47,13 +51,15 @@ userRouter.patch("/change-password", VALIDATOR.changePassword, runValidation, ve
 userRouter.put("/change-email", VALIDATOR.changeEmail, runValidation, verifyToken(), changeCurrentEmail);
 userRouter.patch("/:id", verifyToken(), updateAccountDetails);
 userRouter.delete("/:id", verifyToken("admin"), deleteUser);
-userRouter.patch("/manage-user-status/:userId", VALIDATOR.manageUserStatus, runValidation, verifyToken("admin"), manageUserStatus);
+userRouter.patch(
+    "/manage-user-status/:userId",
+    VALIDATOR.manageUserStatus,
+    runValidation,
+    verifyToken("admin"),
+    manageUserStatus
+);
 
 // Routes for seeding
 seedRouter.post("/users", seedUsers);
 
-export {
-  authRouter,
-  userRouter,
-  seedRouter
-};
+export { authRouter, userRouter, seedRouter };
