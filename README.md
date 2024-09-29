@@ -15,6 +15,15 @@ It eliminates the need to write authentication code, saving you valuable time an
 
 - 🌟 Specially **designed to deploy on** [Vercel](https://vercel.com)
 
+> [IMPORTANT]
+> In this api every single file contains multiple components
+instead of being modularized because this API
+is designed to be deployed on Vercel. Vercel 
+doesn't support more than 12 serverless 
+functions, so to keep the JavaScript files under 12,
+I designed the API code this way.
+
+
 ### 🔴 Unveiling the Journey of Building This Api-Template
 > [!Note]
 > I developed this REST API to simplify the creation of APIs that require authentication. By using this template, developers can avoid writing authentication code, allowing them to focus on other essential aspects of their projects. This solution provides a comprehensive and efficient approach to creating REST APIs with user authentication.

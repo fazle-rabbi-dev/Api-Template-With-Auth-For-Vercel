@@ -20,6 +20,7 @@ import {
 } from "../controllers/userController.js";
 import { seedUsers } from "../controllers/seedController.js";
 
+
 // Initialize routers
 const authRouter = Router();
 const userRouter = Router();
@@ -43,13 +44,14 @@ userRouter.get("/profile/:userId", VALIDATOR.getUserProfile, runValidation, getU
 userRouter.get("/forgot-password", VALIDATOR.forgotPassword, runValidation, forgotPassword);
 userRouter.patch("/reset-password", VALIDATOR.resetPassword, runValidation, resetPassword);
 userRouter.patch("/confirm-change-email", VALIDATOR.confirmChangeEmail, runValidation, confirmChangeEmail);
-
 // Secured routes of users
-userRouter.get("/", verifyToken("admin"), getAllUsers);
 userRouter.get("/:id", verifyToken(), getCurrentUser);
 userRouter.patch("/change-password", VALIDATOR.changePassword, runValidation, verifyToken(), changeCurrentPassword);
 userRouter.put("/change-email", VALIDATOR.changeEmail, runValidation, verifyToken(), changeCurrentEmail);
 userRouter.patch("/:id", verifyToken(), updateAccountDetails);
+
+// Routes for admin dashboard
+userRouter.get("/", verifyToken("admin"), getAllUsers);
 userRouter.delete("/:id", verifyToken("admin"), deleteUser);
 userRouter.patch(
     "/manage-user-status/:userId",

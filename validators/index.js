@@ -1,7 +1,10 @@
 import { body, query, check } from "express-validator";
 import { validateUsername, validateDocumentId } from "../lib/index.js";
 
-// Auth
+
+// =====================================================================================================================
+// Authentication
+// =====================================================================================================================
 export const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 export const register = [
@@ -79,7 +82,10 @@ export const refreshAccessToken = [
         })
 ];
 
+
+// =====================================================================================================================
 // Users
+// =====================================================================================================================
 export const resendAccountConfirmationEmail = [
     query("email")
         .trim()
@@ -118,7 +124,6 @@ export const forgotPassword = [
 ];
 
 export const resetPassword = [
-    // userId, resetPasswordToken
     query("userId")
         .trim()
         .custom((value, { req }) => {

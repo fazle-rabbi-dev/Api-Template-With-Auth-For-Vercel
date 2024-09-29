@@ -8,12 +8,10 @@ const PORT = process.env.PORT || 3000;
 
 connectDB();
 
-(async () => {
-    app.listen(PORT, err => {
-        if (!err) {
-            console.log(chalk.bold.magenta(`✓ Server is running at: http://localhost:${PORT}`));
-        } else {
-            console.log(chalk.bold.red(`✘ Failed to start server! CAUSE: ${err}`));
-        }
-    });
-})();
+app.listen(PORT, err => {
+    if (!err) {
+        console.log(chalk.bold.magenta(`✓ Server is running at: http://localhost:${PORT}`));
+    } else {
+        console.log(chalk.bold.red(`✘ Failed to start server! CAUSE: ${err}`));
+    }
+});
