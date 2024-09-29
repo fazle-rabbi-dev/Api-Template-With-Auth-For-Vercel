@@ -16,6 +16,7 @@ import {
   successResponse,
   ApiError,
   sendEmail,
+  DEVELOPER_EMAIL,
   PROJECT_NAME,
   JWT_SECRET,
   generateAccountConfirmationEmail,
@@ -28,6 +29,7 @@ import {
   validateDocumentId,
   generateValidationError,
   validateUsername,
+  isValidUrl,
   generateAccessAndRefereshTokens,
 } from "../lib/index.js";
 
@@ -130,7 +132,7 @@ const loginUser = async (username, email, password) => {
     if (user.isBanned) {
         throw new ApiError(
             403,
-            "Your account has been temporarily suspended. For assistance, please contact our support team at [demo@gmail.com]. Thank you for your understanding."
+            `Your account has been temporarily suspended. For assistance, please contact our support team at [${DEVELOPER_EMAIL}]. Thank you for your understanding.`
         );
     }
 
@@ -422,16 +424,15 @@ const resetPassword = async (userId, resetPasswordToken, newPassword) => {
     return currentUser.generateSafeObject();
 };
 
-// CHECK This:
 const updateAccountDetails = async data => {
     const { body, id, loggedInUserId } = data;
-    const { name, username } = body;
+    const { name, username, avatarUrl } = body;
 
     if (id !== loggedInUserId) {
         throw new ApiError(403, "Sorry, you don't have permission to do this operation. Please provide a valid user id.");
     }
 
-    const allowedUpdates = ["name", "username"];
+    const allowedUpdates = ["name", "username", "avatarUrl"];
 
     // Validate allowed updates
     const updates = Object.keys(body);
@@ -459,7 +460,15 @@ const updateAccountDetails = async data => {
     }
 
     const currentUser = await Users.findById(loggedInUserId);
-    const updateFields = req.body;
+    const updateFields = body;
+    
+    if(isValidUrl(avatarUrl)) {
+      delete updateFields.avatarUrl;
+      updateFields.avatar = {
+        url: avatarUrl,
+        id: Date.now()
+      };
+    }
     
     const updatedUser = await Users.findByIdAndUpdate(loggedInUserId, updateFields, { new: true, runValidation: true });
 
@@ -569,31 +578,25 @@ const getAllUsers = async ({ page, limit, sortBy, order, fields, search }) => {
     };
 };
 
-// CHECK
 const deleteUser = async userId => {
-    const existingUser = await findItemWithId(User, userId);
+    const existingUser = await findItemWithId(Users, userId);
 
     const deletedUser = await Users.deleteOne({
-        _id: id,
+        _id: userId,
         "authentication.role": "user"
     });
-
-    // Delete user avatar/image
-    if (deletedUser?.deletedCount === 1) {
-        await Cloudinary.deleteFile(existingUser.avatar.id);
-    }
 };
 
-const manageUserStatus = async (id, action) => {
+const manageUserStatus = async (userId, action) => {
     if (!["ban", "unban"].includes(action)) {
         throw new ApiError(400, "Invalid action. The action must be either 'ban' or 'unban'.");
     }
 
-    if (!validateDocumentId(id)) {
+    if (!validateDocumentId(userId)) {
         throw new ApiError(400, "Invalid user Id.");
     }
 
-    const existingUser = await Users.findById(id).select("+isBanned");
+    const existingUser = await Users.findById(userId).select("+isBanned");
 
     if (!existingUser) {
         throw new ApiError(404, "User does not exists.");
@@ -608,7 +611,7 @@ const manageUserStatus = async (id, action) => {
     }
 
     const updateFields = { isBanned: action === "ban" };
-    const updatedUser = await Users.findByIdAndUpdate(id, updateFields, { new: true }).select("+isBanned");
+    const updatedUser = await Users.findByIdAndUpdate(userId, updateFields, { new: true }).select("+isBanned");
 
     const actionMessage = action === "ban" ? "banned" : "unbanned";
 

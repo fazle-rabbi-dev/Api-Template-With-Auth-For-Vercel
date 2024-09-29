@@ -47,7 +47,7 @@ userRouter.patch("/change-password", VALIDATOR.changePassword, runValidation, ve
 userRouter.put("/change-email", VALIDATOR.changeEmail, runValidation, verifyToken(), changeCurrentEmail);
 userRouter.patch("/:id", verifyToken(), updateAccountDetails);
 userRouter.delete("/:id", verifyToken("admin"), deleteUser);
-userRouter.patch("/manage-user-status/:id", verifyToken("admin"), manageUserStatus);
+userRouter.patch("/manage-user-status/:userId", VALIDATOR.manageUserStatus, runValidation, verifyToken("admin"), manageUserStatus);
 
 // Routes for seeding
 seedRouter.post("/users", seedUsers);

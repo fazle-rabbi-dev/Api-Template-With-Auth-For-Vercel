@@ -168,14 +168,14 @@ export const resetPassword = asyncHandler(async (req, res) => {
 // Update User Account Details or Profile
 // =====================================================================================================================
 export const updateAccountDetails = asyncHandler(async (req, res) => {
-  const { fullName, username } = req.body;
+  const { name, username } = req.body;
   const { id } = req.params;
 
   const loggedInUserId = req.user._id;
   
   const data = {
     body: {
-      fullName,
+      name,
       username
     },
     id,
@@ -246,11 +246,11 @@ export const deleteUser = asyncHandler(async (req, res) => {
 // Ban/Unban User
 // =====================================================================================================================
 export const manageUserStatus = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const action = req.query?.action.toLowerCase();
-
+  const { userId } = req.params;
+  const action = req.query?.action?.toLowerCase();
+  
   const { updatedUser, actionMessage } = await userService.manageUserStatus(
-    id,
+    userId,
     action
   );
 

@@ -294,3 +294,22 @@ export const updateAccount = [
       return true;
     })
 ];
+
+export const manageUserStatus = [
+    query("action")
+      .notEmpty()
+      .trim()
+      .withMessage("Action (ban/unban) is required in the query parameter."),
+    
+    check("userId")
+    .trim()
+    .custom((userId, { req }) => {
+      if (!validateDocumentId(userId)) {
+        throw new Error(
+          "Invalid user ID. Please ensure you provide a valid userId as the query parameter."
+        );
+      }
+
+      return true;
+    })
+  ]
