@@ -22,6 +22,10 @@ import {
   generateAccountConfirmationEmail,
   generateEmailChangeConfirmationEmail,
   generatePasswordResetEmail,
+  generateNewLoginNotificationEmail,
+  generatePasswordChangeNotificationEmail,
+  generateEmailChangeRequestNotificationEmail,
+  generateEmailChangedNotificationEmail,
   generateRandomString,
   generateAccountConfirmationLink,
   generateEmailChangeConfirmationLink,
@@ -61,6 +65,7 @@ export const findItemWithId = async (Model, id, options = {}, select = "") => {
 *** Auth Services ***
 ***
 */
+
 // Register User
 const registerUser = async ({ name, username, email, password }) => {
     const existingUser = await Users.findOne({
@@ -105,7 +110,7 @@ const registerUser = async ({ name, username, email, password }) => {
 };
 
 // Login User
-const loginUser = async (username, email, password) => {
+const loginUser = async (username, email, password, headers) => {
     const user = await Users.findOne({
         $or: [{ username }, { email }]
     }).select("+authentication.password +authentication.isAccountConfirmed +authentication.role +authentication.authType +isBanned");
@@ -142,7 +147,25 @@ const loginUser = async (username, email, password) => {
             "Account Not Confirmed. Your account needs to be confirmed. Please check your email inbox for the confirmation link."
         );
     }
+    
+    /* === Notify user about new login === */
+    // Get the login time
+    const loginTime = new Date().toLocaleString(); // or you can use `toISOString()` for UTC format
 
+    // Get the device info from the User-Agent header
+    const device = headers;
+    
+    const newLogin = generateNewLoginNotificationEmail(
+      user.username,
+      loginTime,
+      device
+    );
+    await sendEmail(
+        user.email,
+        "New login detected",
+        newLogin
+      );
+    
     const { accessToken, refreshToken } = await generateAccessAndRefereshTokens(user._id, user.authentication.role);
 
     const userObject = user.toObject();
@@ -328,7 +351,7 @@ const resendAccountConfirmationEmail = async email => {
 const confirmAccount = async (userId, confirmationToken) => {
     const select = "+authentication.confirmationToken +authentication.isAccountConfirmed";
 
-    const currentUser = await findItemWithId(Users, userId, {}, select);
+    const currentUser = await findItemWithId(Users, userId);
 
     if (currentUser.authentication.isAccountConfirmed) {
         throw new ApiError(400, "Hey there! Your account is already confirmed. Feel free to log in.");
@@ -377,7 +400,15 @@ const changeCurrentPassword = async (loggedInUserId, oldPassword, newPassword) =
     if (!isPasswordCorrect) {
         throw new ApiError(400, "Incorrect old password. Please try again with the correct password.");
     }
-
+    
+    // Notify user about password change 
+    const passwordChanged = generatePasswordChangeNotificationEmail(currentUser.username)
+    await sendEmail(
+        currentUser.email,
+        "Password changed",
+        passwordChanged
+      )
+    
     currentUser.authentication.password = newPassword;
     const savedUser = await currentUser.save();
 

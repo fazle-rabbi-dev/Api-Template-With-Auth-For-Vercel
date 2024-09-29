@@ -25,7 +25,8 @@ export const registerUser = asyncHandler(async (req, res) => {
 // Login User
 export const loginUser = asyncHandler(async (req, res) => {
     const { username, email, password } = req.body;
-    const user = await authService.loginUser(username, email, password);
+    const headers = req.headers['user-agent'];
+    const user = await authService.loginUser(username, email, password, headers);
 
     successResponse(res, {
         statusCode: 200,
