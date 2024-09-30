@@ -130,13 +130,15 @@ const loginUser = async (username, email, password, headers) => {
         );
     }
 
-    /* === Notify user about new login === */
-    // Get the login time
+    /****
+      [*] Notify user about new login
+    ****/
+    
+    // Get login info
     const loginTime = new Date().toLocaleString(); // or you can use `toISOString()` for UTC format
-
-    // Get the device info from the User-Agent header
     const device = headers;
-
+    
+    // Send mail
     const newLogin = generateNewLoginNotificationEmail(user.username, loginTime, device);
     await sendEmail(user.email, "New login detected", newLogin);
 
@@ -187,7 +189,7 @@ const loginWithSocial = async accessToken => {
         throw new ApiError(409, "Your email is associated with an account. Please login with your email & password");
     }
 
-    /*Create new account or Login to existing account*/
+    // Create new account or Login to existing account
     let newUserAccount;
     let loginAccessToken = null;
 
@@ -403,7 +405,7 @@ const changeCurrentPassword = async (loggedInUserId, oldPassword, newPassword) =
         throw new ApiError(400, "Incorrect old password. Please try again with the correct password.");
     }
 
-    // Notify user about password change
+    // Notify the user that their password has been changed
     const passwordChanged = generatePasswordChangeNotificationEmail(currentUser.username);
     await sendEmail(currentUser.email, "Password changed", passwordChanged);
 
@@ -430,7 +432,7 @@ const forgotPassword = async email => {
     currentUser.authentication.resetPasswordToken = resetPasswordToken;
     await currentUser.save();
 
-    // Send account confirmation email
+    // Send reset password email
     const htmlEmailTemplate = generatePasswordResetEmail(currentUser.name, resetPasswordLink);
     await sendEmail(currentUser.email, `${PROJECT_NAME} Password Reset`, htmlEmailTemplate);
 };
@@ -467,9 +469,8 @@ const updateAccountDetails = async data => {
         throw new ApiError(403, "Sorry, you don't have permission to do this operation. Please provide a valid user id.");
     }
 
+    // Validate fields for updates
     const allowedUpdates = ["name", "username", "avatarUrl"];
-
-    // Validate allowed updates
     const updates = Object.keys(body);
     const isValidOperation = updates.every(field => allowedUpdates.includes(field));
 
@@ -567,17 +568,17 @@ const confirmChangeEmail = async (userId, confirmationToken) => {
         );
     }
 
-    // update email
+    // Update email
     const oldEmail = existingUser.email;
     existingUser.email = existingUser.authentication.tempMail;
 
-    // remove tempMail & confirmationToken from db
+    // Remove tempMail & confirmationToken from db
     existingUser.authentication.changeEmailConfirmationToken = "";
     existingUser.authentication.tempMail = "";
 
     const updatedUser = await existingUser.save({ new: true });
 
-    // Notify user through old email about email change
+    // Notify the user through their old email about the email change
     const emailChanged = generateEmailChangedNotificationEmail(existingUser.name);
     await sendEmail(oldEmail, "Email changed", emailChanged);
 
@@ -592,7 +593,7 @@ const confirmChangeEmail = async (userId, confirmationToken) => {
 */
 
 const getAllUsers = async ({ page, limit, sortBy, order, fields, search }) => {
-    // pagination
+    // Pagination
     page = parseInt(page) || 1;
     limit = parseInt(limit) || 10;
     const skip = (page - 1) * limit;
@@ -602,7 +603,7 @@ const getAllUsers = async ({ page, limit, sortBy, order, fields, search }) => {
     const sortOrder = order === "desc" ? -1 : 1;
     const sort = { [sortField]: sortOrder };
 
-    // partial response
+    // Partial response
     fields = fields ? fields.split(",") : [];
 
     // Search
