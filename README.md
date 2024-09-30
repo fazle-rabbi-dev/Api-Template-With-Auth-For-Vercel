@@ -15,7 +15,7 @@ It eliminates the need to write authentication code, saving you valuable time an
 
 - 🌟 Specially **designed to deploy on** [Vercel](https://vercel.com)
 
-> [IMPORTANT]
+> [!IMPORTANT]
 > In this api every single file contains multiple components
 instead of being modularized because this API
 is designed to be deployed on Vercel. Vercel 
