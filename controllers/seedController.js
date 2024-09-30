@@ -2,19 +2,22 @@ import asyncHandler from "express-async-handler";
 import Users from "../models/UserModel.js";
 import { successResponse, ApiError, ENVIRONMENT, USERS_DATA } from "../lib/index.js";
 
-const checkPermission = () => {
+
+const verifyPermission = () => {
     if (ENVIRONMENT !== "dev") {
         throw new ApiError(403, "Permission denied.");
     }
 };
 
-// Seed Users
+// ╭────────────────────────────────────────────────────────╮
+// │      Seed Users
+// ╰────────────────────────────────────────────────────────╯
 export const seedUsers = asyncHandler(async (req, res) => {
-    checkPermission();
+    verifyPermission();
 
     await Users.deleteMany({});
 
-    // Insert seed data
+    // Insert users
     const insertedUsers = await Users.create(USERS_DATA);
 
     successResponse(res, {

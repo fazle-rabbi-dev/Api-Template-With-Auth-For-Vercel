@@ -209,7 +209,7 @@ export const confirmChangeEmail = [
         })
 ];
 
-export const getUserProfile = [
+export const getUserPublicProfile = [
     check("userId")
         .trim()
         .custom((userId, { req }) => {

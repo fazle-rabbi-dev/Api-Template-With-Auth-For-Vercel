@@ -6,9 +6,9 @@ import { registerUser, loginUser, loginWithSocial, refreshAccessToken } from "..
 import {
     confirmAccount,
     resendAccountConfirmationEmail,
-    getUserProfile,
     getAllUsers,
     getCurrentUser,
+    getUserPublicProfile,
     changeCurrentPassword,
     forgotPassword,
     resetPassword,
@@ -40,7 +40,7 @@ userRouter.get(
     runValidation,
     resendAccountConfirmationEmail
 );
-userRouter.get("/profile/:userId", VALIDATOR.getUserProfile, runValidation, getUserProfile);
+userRouter.get("/profile/:userId", VALIDATOR.getUserPublicProfile, runValidation, getUserPublicProfile);
 userRouter.get("/forgot-password", VALIDATOR.forgotPassword, runValidation, forgotPassword);
 userRouter.patch("/reset-password", VALIDATOR.resetPassword, runValidation, resetPassword);
 userRouter.patch("/confirm-change-email", VALIDATOR.confirmChangeEmail, runValidation, confirmChangeEmail);

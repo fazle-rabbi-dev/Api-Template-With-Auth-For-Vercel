@@ -4,10 +4,13 @@ import jwt from "jsonwebtoken";
 import { validationResult } from "express-validator";
 
 import User from "../models/UserModel.js";
-import { userService, findItemWithId } from "../services/index.js";
+import { userService } from "../services/index.js";
 import { ApiError, successResponse } from "../lib/index.js";
 
-// Resend Account Confirmation Email
+
+// ╭──────────────────────────────────────────╮
+// │      Resend Account Confirmation Email   │
+// ╰──────────────────────────────────────────╯
 export const resendAccountConfirmationEmail = asyncHandler(async (req, res) => {
     const { email } = req.query;
 
@@ -19,9 +22,9 @@ export const resendAccountConfirmationEmail = asyncHandler(async (req, res) => {
     });
 });
 
-// =====================================================================================================================
-// Confirm User Account
-// =====================================================================================================================
+// ╭────────────────────────────────────────────────────────╮
+// │      Confirm User Account                              │
+// ╰────────────────────────────────────────────────────────╯
 export const confirmAccount = asyncHandler(async (req, res) => {
     const { userId, confirmationToken } = req.query;
 
@@ -36,30 +39,9 @@ export const confirmAccount = asyncHandler(async (req, res) => {
     });
 });
 
-// =====================================================================================================================
-// Get Any User Public Profile By User Id
-// =====================================================================================================================
-export const getUserProfile = asyncHandler(async (req, res) => {
-    const { userId } = req.params;
-
-    const options = {
-        email: 0,
-        "authentication.password": 0
-    };
-    const user = await findItemWithId(User, userId, options);
-
-    successResponse(res, {
-        statusCode: 200,
-        message: "User profile retrieved successfully.",
-        data: {
-            user
-        }
-    });
-});
-
-// =====================================================================================================================
-// Get All Users
-// =====================================================================================================================
+// ╭────────────────────────────────────────────────────────╮
+// │      (Admin Only) Get All Users                                     │
+// ╰────────────────────────────────────────────────────────╯
 export const getAllUsers = asyncHandler(async (req, res) => {
     const { page, limit, sortBy, order, fields, search } = req.query;
 
@@ -88,9 +70,9 @@ export const getAllUsers = asyncHandler(async (req, res) => {
     });
 });
 
-// =====================================================================================================================
-// Get Currently Logged In User
-// =====================================================================================================================
+// ╭────────────────────────────────────────────────────────╮
+// │      Get Currently Logged In User                      │
+// ╰────────────────────────────────────────────────────────╯
 export const getCurrentUser = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const loggedInUserId = req.user._id;
@@ -104,9 +86,25 @@ export const getCurrentUser = asyncHandler(async (req, res) => {
     });
 });
 
-// =====================================================================================================================
-// Change User Password
-// =====================================================================================================================
+// ╭────────────────────────────────────────────────────────╮
+// │      Get Any User Public Profile By User Id            │
+// ╰────────────────────────────────────────────────────────╯
+export const getUserPublicProfile = asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+    const user = await userService.getUserPublicProfile(userId);
+    
+    successResponse(res, {
+        statusCode: 200,
+        message: "User profile retrieved successfully.",
+        data: {
+            user
+        }
+    });
+});
+
+// ╭────────────────────────────────────────────────────────╮
+// │      Change User Password                              │
+// ╰────────────────────────────────────────────────────────╯
 export const changeCurrentPassword = asyncHandler(async (req, res) => {
     const loggedInUserId = req.user._id;
     const { oldPassword, newPassword } = req.body;
@@ -122,9 +120,9 @@ export const changeCurrentPassword = asyncHandler(async (req, res) => {
     });
 });
 
-// =====================================================================================================================
-// Forgot Password
-// =====================================================================================================================
+// ╭────────────────────────────────────────────────────────╮
+// │      Forgot Password                                   │
+// ╰────────────────────────────────────────────────────────╯
 export const forgotPassword = asyncHandler(async (req, res) => {
     const { email } = req.query;
 
@@ -136,9 +134,9 @@ export const forgotPassword = asyncHandler(async (req, res) => {
     });
 });
 
-// =====================================================================================================================
-// Reset Password
-// =====================================================================================================================
+// ╭────────────────────────────────────────────────────────╮
+// │      Reset Password                                    │
+// ╰────────────────────────────────────────────────────────╯
 export const resetPassword = asyncHandler(async (req, res) => {
     const { userId, resetPasswordToken } = req.query;
     const { newPassword } = req.body;
@@ -152,19 +150,19 @@ export const resetPassword = asyncHandler(async (req, res) => {
     });
 });
 
-// =====================================================================================================================
-// Update User Account Details or Profile
-// =====================================================================================================================
+// ╭────────────────────────────────────────────────────────╮
+// │      Update User Account Details or Profile            │
+// ╰────────────────────────────────────────────────────────╯
 export const updateAccountDetails = asyncHandler(async (req, res) => {
-    const { name, username } = req.body;
+    const { name, username, avatarUrl } = req.body;
     const { id } = req.params;
-
     const loggedInUserId = req.user._id;
 
     const data = {
         body: {
             name,
-            username
+            username,
+            avatarUrl
         },
         id,
         loggedInUserId
@@ -179,9 +177,9 @@ export const updateAccountDetails = asyncHandler(async (req, res) => {
     });
 });
 
-// =====================================================================================================================
-// Change Current Email Address
-// =====================================================================================================================
+// ╭────────────────────────────────────────────────────────╮
+// │      Change Current Email Address                      │
+// ╰────────────────────────────────────────────────────────╯
 export const changeCurrentEmail = asyncHandler(async (req, res) => {
     const loggedInUserId = req.user._id;
     const { newEmail, password } = req.body;
@@ -195,9 +193,9 @@ export const changeCurrentEmail = asyncHandler(async (req, res) => {
     });
 });
 
-// =====================================================================================================================
-// Confirm Email Change
-// =====================================================================================================================
+// ╭────────────────────────────────────────────────────────╮
+// │      Confirm Email Change                              │
+// ╰────────────────────────────────────────────────────────╯
 export const confirmChangeEmail = asyncHandler(async (req, res) => {
     const { userId, confirmationToken } = req.query;
 
@@ -212,9 +210,9 @@ export const confirmChangeEmail = asyncHandler(async (req, res) => {
     });
 });
 
-// =====================================================================================================================
-// Delete User By Id
-// =====================================================================================================================
+// ╭────────────────────────────────────────────────────────╮
+// │      (Admin Only) Delete User By Id                                 │
+// ╰────────────────────────────────────────────────────────╯
 export const deleteUser = asyncHandler(async (req, res) => {
     const id = req.params.id;
 
@@ -226,9 +224,9 @@ export const deleteUser = asyncHandler(async (req, res) => {
     });
 });
 
-// =====================================================================================================================
-// Ban/Unban User
-// =====================================================================================================================
+// ╭────────────────────────────────────────────────────────╮
+// │      (Admin Only) Ban/Unban User                                    │
+// ╰────────────────────────────────────────────────────────╯
 export const manageUserStatus = asyncHandler(async (req, res) => {
     const { userId } = req.params;
     const action = req.query?.action?.toLowerCase();

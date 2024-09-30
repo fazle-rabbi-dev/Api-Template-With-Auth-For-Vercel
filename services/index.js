@@ -2,6 +2,7 @@ import asyncHandler from "express-async-handler";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { validationResult } from "express-validator";
+// initialize firebase-admin
 import admin from "firebase-admin";
 import { initializeApp, applicationDefault } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
@@ -33,38 +34,20 @@ import {
     generateValidationError,
     validateUsername,
     isValidUrl,
-    generateAccessAndRefereshTokens
+    generateAccessAndRefereshTokens,
+    findItemWithId
 } from "../lib/index.js";
 
-export const findItemWithId = async (Model, id, options = {}, select = "") => {
-    if (!validateDocumentId(id)) {
-        throw new ApiError(
-            400,
-            `Uh-oh! It seems the ${Model.modelName} id is missing or invalid. Please provide a valid ${Model.modelName} id in the request path.`
-        );
-    }
-
-    let item;
-    if (select) {
-        item = await Model.findById(id).select(select);
-    } else {
-        item = await Model.findById(id);
-    }
-
-    if (!item) {
-        throw new ApiError(404, `${Model.modelName} not found with the given id.`);
-    }
-
-    return item;
-};
 
 /*
  ***
  *** Auth Services ***
  ***
- */
+*/
 
-// Register User
+// ╭────────────────────────────────────────────────────────╮
+// │      Register User
+// ╰────────────────────────────────────────────────────────╯
 const registerUser = async ({ name, username, email, password }) => {
     const existingUser = await Users.findOne({
         $or: [{ username }, { email }]
@@ -107,7 +90,9 @@ const registerUser = async ({ name, username, email, password }) => {
     return userObject;
 };
 
-// Login User
+// ╭────────────────────────────────────────────────────────╮
+// │      Login User
+// ╰────────────────────────────────────────────────────────╯
 const loginUser = async (username, email, password, headers) => {
     const user = await Users.findOne({
         $or: [{ username }, { email }]
@@ -167,7 +152,9 @@ const loginUser = async (username, email, password, headers) => {
     return userObject;
 };
 
-// Social Auth
+// ╭────────────────────────────────────────────────────────╮
+// │      Social Auth
+// ╰────────────────────────────────────────────────────────╯
 const loginWithSocial = async accessToken => {
     // Verify accessToken & find user
     let userRecord;
@@ -250,13 +237,14 @@ const loginWithSocial = async accessToken => {
     }
 
     return {
-        statusCode: 200,
         message: `Logged in successfully using ${authType}.`,
         data: { user: { ...userData, accessToken: loginAccessToken } }
     };
 };
 
-// Refresh Access Token
+// ╭────────────────────────────────────────────────────────╮
+// │      Refresh Access Token
+// ╰────────────────────────────────────────────────────────╯
 const refreshAccessToken = async (userId, refreshToken) => {
     console.log({ userId, refreshToken });
 
@@ -283,11 +271,16 @@ const refreshAccessToken = async (userId, refreshToken) => {
     };
 };
 
+
 /*
  ***
  *** User Services ***
  ***
- */
+*/
+
+// ╭────────────────────────────────────────────────────────╮
+// │      Resend account confirmation email
+// ╰────────────────────────────────────────────────────────╯
 const resendAccountConfirmationEmail = async email => {
     const currentUser = await Users.findOne({ email }).select(
         "+authentication.isAccountConfirmed +authentication.confirmationToken"
@@ -323,6 +316,9 @@ const resendAccountConfirmationEmail = async email => {
     return userObject;
 };
 
+// ╭────────────────────────────────────────────────────────╮
+// │      Confirm account
+// ╰────────────────────────────────────────────────────────╯
 const confirmAccount = async (userId, confirmationToken) => {
     const select = "+authentication.confirmationToken +authentication.isAccountConfirmed";
 
@@ -343,6 +339,9 @@ const confirmAccount = async (userId, confirmationToken) => {
     return currentUser.generateSafeObject();
 };
 
+// ╭────────────────────────────────────────────────────────╮
+// │      Get loggedin user
+// ╰────────────────────────────────────────────────────────╯
 const getCurrentUser = async (id, loggedInUserId) => {
     if (id !== loggedInUserId) {
         throw new ApiError(403, "Sorry, you don't have permission to perform this operation. Please provide a valid user id.");
@@ -363,6 +362,34 @@ const getCurrentUser = async (id, loggedInUserId) => {
     return currentUser.generateSafeObject();
 };
 
+// ╭────────────────────────────────────────────────────────╮
+// │      Get user public profile
+// ╰────────────────────────────────────────────────────────╯
+const getUserPublicProfile = async (userId) => {
+    const user = await Users.findById(userId).select("+isBanned");
+    
+    if (!user) {
+        throw new ApiError(404, "User does not exists.");
+    }
+
+    if (user.isBanned) {
+        throw new ApiError(
+            403,
+            "Your account has been temporarily suspended. For assistance, please contact our support team at [demo@gmail.com]. Thank you for your understanding."
+        );
+    }
+
+    return {
+      _id: user._id,
+      username: user.username,
+      name: user.name,
+      avatar: user.avatar
+    }
+};
+
+// ╭────────────────────────────────────────────────────────╮
+// │      Change current password
+// ╰────────────────────────────────────────────────────────╯
 const changeCurrentPassword = async (loggedInUserId, oldPassword, newPassword) => {
     const currentUser = await Users.findById(loggedInUserId).select("+authentication.password");
 
@@ -386,6 +413,9 @@ const changeCurrentPassword = async (loggedInUserId, oldPassword, newPassword) =
     return currentUser.generateSafeObject();
 };
 
+// ╭────────────────────────────────────────────────────────╮
+// │      Forgot password
+// ╰────────────────────────────────────────────────────────╯
 const forgotPassword = async email => {
     const currentUser = await Users.findOne({ email }).select("+authentication.resetPasswordToken");
 
@@ -405,6 +435,9 @@ const forgotPassword = async email => {
     await sendEmail(currentUser.email, `${PROJECT_NAME} Password Reset`, htmlEmailTemplate);
 };
 
+// ╭────────────────────────────────────────────────────────╮
+// │      Reset password
+// ╰────────────────────────────────────────────────────────╯
 const resetPassword = async (userId, resetPasswordToken, newPassword) => {
     const currentUser = await Users.findById(userId).select("+authentication.resetPasswordToken +authentication.password");
 
@@ -423,6 +456,9 @@ const resetPassword = async (userId, resetPasswordToken, newPassword) => {
     return currentUser.generateSafeObject();
 };
 
+// ╭────────────────────────────────────────────────────────╮
+// │      Update account details
+// ╰────────────────────────────────────────────────────────╯
 const updateAccountDetails = async data => {
     const { body, id, loggedInUserId } = data;
     const { name, username, avatarUrl } = body;
@@ -474,6 +510,9 @@ const updateAccountDetails = async data => {
     return updatedUser.generateSafeObject();
 };
 
+// ╭────────────────────────────────────────────────────────╮
+// │      Change email address
+// ╰────────────────────────────────────────────────────────╯
 const changeCurrentEmail = async (loggedInUserId, newEmail, password) => {
     const existingUser = await Users.findOne({ email: newEmail });
 
@@ -506,6 +545,9 @@ const changeCurrentEmail = async (loggedInUserId, newEmail, password) => {
     return currentUser.generateSafeObject();
 };
 
+// ╭────────────────────────────────────────────────────────╮
+// │      Confirm email change
+// ╰────────────────────────────────────────────────────────╯
 const confirmChangeEmail = async (userId, confirmationToken) => {
     const existingUser = await Users.findById(userId).select(
         "+authentication.tempMail +authentication.changeEmailConfirmationToken"
@@ -542,9 +584,13 @@ const confirmChangeEmail = async (userId, confirmationToken) => {
     return updatedUser.generateSafeObject();
 };
 
-// =====================================================================================================================
-// Admin Routes
-// =====================================================================================================================
+
+/*
+ ***
+ *** Admin Dashboard Services ***
+ ***
+*/
+
 const getAllUsers = async ({ page, limit, sortBy, order, fields, search }) => {
     // pagination
     page = parseInt(page) || 1;
@@ -629,7 +675,10 @@ const manageUserStatus = async (userId, action) => {
     };
 };
 
-// Export
+
+// ╭────────────────────────────────────────────────────────╮
+// │      Export all functions
+// ╰────────────────────────────────────────────────────────╯
 export const authService = {
     registerUser,
     loginUser,
@@ -642,6 +691,7 @@ export const userService = {
     confirmAccount,
     getAllUsers,
     getCurrentUser,
+    getUserPublicProfile,
     changeCurrentPassword,
     forgotPassword,
     resetPassword,

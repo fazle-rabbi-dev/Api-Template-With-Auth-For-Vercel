@@ -1,9 +1,11 @@
 import asyncHandler from "express-async-handler";
-
 import { successResponse } from "../lib/index.js";
 import { authService } from "../services/index.js";
 
-// Register User
+
+// ╭────────────────────────────────────────────────────────╮
+// │      Register User
+// ╰────────────────────────────────────────────────────────╯
 export const registerUser = asyncHandler(async (req, res) => {
     const { name, username, email, password } = req.body;
 
@@ -21,9 +23,12 @@ export const registerUser = asyncHandler(async (req, res) => {
     });
 });
 
-// Login User
+// ╭────────────────────────────────────────────────────────╮
+// │      Login User
+// ╰────────────────────────────────────────────────────────╯
 export const loginUser = asyncHandler(async (req, res) => {
     const { username, email, password } = req.body;
+    // headers are used to identify the device performing the login.
     const headers = req.headers["user-agent"];
     const user = await authService.loginUser(username, email, password, headers);
 
@@ -34,19 +39,23 @@ export const loginUser = asyncHandler(async (req, res) => {
     });
 });
 
-// Social Login
+// ╭────────────────────────────────────────────────────────╮
+// │      Social Login
+// ╰────────────────────────────────────────────────────────╯
 export const loginWithSocial = asyncHandler(async (req, res) => {
     const { accessToken } = req.body;
     const { statusCode, message, data } = await authService.loginWithSocial(accessToken);
 
     successResponse(res, {
-        statusCode,
+        statusCode: 200,
         message,
         data
     });
 });
 
-// Refresh User Access Token
+// ╭────────────────────────────────────────────────────────╮
+// │      Refresh User Access Token
+// ╰────────────────────────────────────────────────────────╯
 export const refreshAccessToken = asyncHandler(async (req, res) => {
     const { userId, refreshToken } = req.body;
 
