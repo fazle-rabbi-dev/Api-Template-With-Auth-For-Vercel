@@ -76,9 +76,9 @@ export const getAllUsers = asyncHandler(async (req, res) => {
 export const getCurrentUser = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const loggedInUserId = req.user._id;
-
+    
     const user = await userService.getCurrentUser(id, loggedInUserId);
-
+    
     successResponse(res, {
         statusCode: 200,
         message: "User retrieved successfully.",
@@ -108,7 +108,7 @@ export const getUserPublicProfile = asyncHandler(async (req, res) => {
 export const changeCurrentPassword = asyncHandler(async (req, res) => {
     const loggedInUserId = req.user._id;
     const { oldPassword, newPassword } = req.body;
-
+    
     const user = await userService.changeCurrentPassword(loggedInUserId, oldPassword, newPassword);
 
     successResponse(res, {

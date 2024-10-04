@@ -225,9 +225,8 @@ const loginWithSocial = async accessToken => {
 
     // Login if user has already an account
     if (existingUser) {
-        loginAccessToken = jwt.sign({ userId: existingUser._id, email: existingUser.email }, JWT_SECRET, {
-            expiresIn: "7d"
-        });
+        const { accessToken } = await generateAccessAndRefereshTokens(existingUser._id, existingUser.authentication.role || "user");
+        loginAccessToken = accessToken;
         delete existingUser.authentication.password;
     }
 
