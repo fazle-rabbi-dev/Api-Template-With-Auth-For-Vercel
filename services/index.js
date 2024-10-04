@@ -237,7 +237,7 @@ const loginWithSocial = async accessToken => {
     } else {
         userData = newUserAccount;
     }
-
+    
     return {
         message: `Logged in successfully using ${authType}.`,
         data: { user: { ...userData, accessToken: loginAccessToken } }
